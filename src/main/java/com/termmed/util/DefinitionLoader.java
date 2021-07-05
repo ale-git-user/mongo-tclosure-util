@@ -16,7 +16,7 @@ public class DefinitionLoader {
 	private HashMap<String, DescData> descriptions;
 	private HashMap<String, HashMap<String,Integer>> typeCounter;
 
-	public DefinitionLoader(String rf2Rels, String descFile, String concFile, String langCode) throws IOException{
+	public DefinitionLoader(String rf2Rels, String concreteRelsFile, String descFile, String concFile, String langCode) throws IOException{
 		definitions = new HashMap<String, TreeMap<Integer, TreeMap<String, String>>>();
 		this.rf2Rels=rf2Rels;
 		concepts=new HashMap<String, ConcData>();
@@ -25,9 +25,18 @@ public class DefinitionLoader {
 		getConceptData(concFile);
 		getDescData(descFile, langCode);
 
-		loadNoIsas();
+		loadRels(rf2Rels,"inferred");
+		loadRels(concreteRelsFile,"concrete");
 	}
 
+	public DefinitionLoader( String descFile, String concFile, String langCode) throws IOException{
+		definitions = new HashMap<String, TreeMap<Integer, TreeMap<String, String>>>();
+		concepts=new HashMap<String, ConcData>();
+		descriptions=new HashMap<String, DescData>();
+		typeCounter=new HashMap<String, HashMap<String, Integer>>();
+		getConceptData(concFile);
+		getDescData(descFile, langCode);
+	}
 	private void getConceptData(String concFile) throws IOException {
 		System.out.println("Starting Concepts from: " + concFile);
 		BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(concFile), "UTF8"));
@@ -142,21 +151,42 @@ public class DefinitionLoader {
 
 	}
 
-	private void loadNoIsas() throws IOException {
+	private void loadRels(String rf2Rels, String fileType) throws IOException {
+		if (rf2Rels==null || rf2Rels.trim().equals("")){
+			System.out.println("Relationships file is null " );
+			return;
+		}
+		File file=new File(rf2Rels);
+		if (!file.exists()){
+			System.out.println("No relationships file exists: " + rf2Rels);
+			return;
+		}
 		System.out.println("Starting Relationships from: " + rf2Rels);
-		BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(rf2Rels), "UTF8"));
+		BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF8"));
 		try {
 			String line = br.readLine();
 			line = br.readLine(); // Skip header
 			int count = 0;
+			String value;
 			while (line != null) {
 				if (line.trim().equals("")) {
 					continue;
 				}
 				String[] columns = line.split("\\t",-1);
 				if ( columns[2].equals("1") ){
-					addRel(columns[5],columns[4],columns[7],Integer.parseInt(columns[6]));
-
+					if (fileType.equals("inferred")) {
+						addRel(columns[5], columns[4], columns[7], Integer.parseInt(columns[6]));
+					}else{
+						if (columns[5].length()>0) {
+							value = columns[5].substring(1);
+							if (columns[5].substring(0,1).equals("\"")) {
+								value=value.substring(0,value.length()-1);
+							}
+						}else{
+							value="";
+						}
+						addRel(value, columns[4], columns[7], Integer.parseInt(columns[6]));
+					}
 					count++;
 					if (count % 100000 == 0) {
 						System.out.print(".");
@@ -207,6 +237,57 @@ public class DefinitionLoader {
 		group.put(type,dest);
 		groupsList.put(groupNr,group);
 		definitions.put(source, groupsList);
+	}
+	public void createDumpCollections(String outputFolder, String db, String collectionPrefix, String pathId) throws IOException {
+
+		MetadataGenerator metadataGenerator=new MetadataGenerator(outputFolder + "/" + collectionPrefix + "definition" + pathId + ".metadata.json");
+		String metadata=Constants.DEFINITION_METADATA_JSON.replaceAll("===DB===",db);
+		metadata=metadata.replaceAll("===COLL===",collectionPrefix);
+		metadata=metadata.replaceAll("===PATH===",pathId);
+		metadataGenerator.generate(metadata);
+		metadataGenerator.close();
+		metadataGenerator=null;
+
+		BsonGenerator bsonGenerator=new BsonGenerator(outputFolder + "/" + collectionPrefix + "definition" + pathId + ".bson");
+		String module;
+		String primitive;
+		HashMap<String, Integer> types;
+		for (String source : definitions.keySet()) {
+			TreeMap<Integer, TreeMap<String, String>> groupsList= definitions.get(source);
+
+			types = typeCounter.get(source);
+			List<Document> groupDocs=new ArrayList<Document>();
+			for(Integer groupNr:groupsList.keySet()){
+				TreeMap<String, String> group = groupsList.get(groupNr);
+				List<Document> relDocs=new ArrayList<Document>();
+				for (String type:group.keySet()){
+					String dest=group.get(type);
+					if (type.lastIndexOf("#")>-1){
+						type=type.substring(0,type.indexOf("#"));
+					}
+
+					Document rDoc=new Document("t",type).append("d",dest).append("q", types.get(type));
+					relDocs.add(rDoc);
+				}
+				groupDocs.add(new Document("rg",relDocs));
+			}
+			ConcData cData=concepts.get(source);
+			module=null;
+			primitive=null;
+			if (cData!=null) {
+				module = cData.getModule();
+				primitive = cData.getPrimitive();
+			}
+			DescData dData=descriptions.get(source);
+			Document doc;
+			if (dData!=null) {
+				doc = new Document("c", source).append("g", groupDocs).append("m", module).append("p", primitive).append("st", dData.getSemTag()).append("dt", dData.getDefaultTerm());
+			}else{
+				doc = new Document("c", source).append("g", groupDocs).append("m", module).append("p", primitive);
+			}
+			bsonGenerator.generate(doc);
+		}
+		bsonGenerator.close();
 	}
 	public void toMongo( MongoCollection<Document> collection) throws IOException {
 		String module;

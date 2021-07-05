@@ -1,7 +1,9 @@
 package com.termmed.util;
 
+import com.mongodb.BasicDBObject;
 import com.mongodb.client.MongoCollection;
 import org.bson.Document;
+import org.bson.BasicBSONEncoder;
 
 import java.io.*;
 import java.util.Arrays;
@@ -18,7 +20,12 @@ public class TClosure {
 	String rf2Rels;
 	private HashSet<String> hControl;
 
-	public TClosure(String rf2Rels) throws IOException{
+    public TClosure() {
+        parentHier=new HashMap<String,HashSet<String>>();
+        childrenHier=new HashMap<String,HashSet<String>>();
+    }
+
+    public TClosure(String rf2Rels) throws IOException{
 		parentHier=new HashMap<String,HashSet<String>>();
 		childrenHier=new HashMap<String,HashSet<String>>();
 		this.rf2Rels=rf2Rels;
@@ -38,7 +45,7 @@ public class TClosure {
 				}
 				String[] columns = line.split("\\t");
 				if (columns[7].equals(ISARELATIONSHIPTYPEID)
-						&& columns[2].equals("1") 
+						&& columns[2].equals("1")
 						&& !columns[4].equals(ROOT_CONCEPT)){
 					addRel(columns[5],columns[4]);
 
@@ -112,7 +119,7 @@ public class TClosure {
 		bw.append("descendant");
 		bw.append("\t");
 		bw.append("ancestor");
-		bw.append("\r\n");		
+		bw.append("\r\n");
 	}
 
 	private BufferedWriter getWriter(String outFile) throws UnsupportedEncodingException, FileNotFoundException {
@@ -152,6 +159,64 @@ public class TClosure {
 		}		
 	}
 
+	public void createDumpCollections(String outputFolder, String db, String collectionPrefix, String pathId) throws IOException {
+
+		MetadataGenerator metadataGenerator=new MetadataGenerator(outputFolder + "/" + collectionPrefix + "ancestor" + pathId + ".metadata.json");
+		String metadata=Constants.ANCESTOR_METADATA_JSON.replaceAll("===DB===",db);
+		metadata=metadata.replaceAll("===COLL===",collectionPrefix);
+		metadata=metadata.replaceAll("===PATH===",pathId);
+		metadataGenerator.generate(metadata);
+		metadataGenerator.close();
+		metadataGenerator=null;
+
+		BsonGenerator bsonGenerator=new BsonGenerator(outputFolder + "/" + collectionPrefix + "ancestor" + pathId + ".bson");
+		for (String child : parentHier.keySet()) {
+			hControl = new HashSet<String>();
+			getParentList( child);
+			bsonGenerator.generate(new Document("c",child.toString()).append("a", hControl));
+			hControl = null;
+		}
+		bsonGenerator.close();
+		bsonGenerator=null;
+
+		metadataGenerator=new MetadataGenerator(outputFolder + "/" + collectionPrefix + "descendant" + pathId + ".metadata.json");
+		metadata=Constants.DESCENDANT_METADATA_JSON.replaceAll("===DB===",db);
+		metadata=metadata.replaceAll("===COLL===",collectionPrefix);
+		metadata=metadata.replaceAll("===PATH===",pathId);
+		metadataGenerator.generate(metadata);
+		metadataGenerator.close();
+		metadataGenerator=null;
+
+		bsonGenerator=new BsonGenerator(outputFolder + "/" + collectionPrefix + "descendant" + pathId + ".bson");
+
+		childrenHier.remove(Long.parseLong(ROOT_CONCEPT));
+		for (String parent : childrenHier.keySet()) {
+			hControl = new HashSet<String>();
+			getChildrenList( parent);
+			bsonGenerator.generate(new Document("c",parent.toString()).append("d", hControl));
+			hControl = null;
+		}
+	}
+
+	public static BufferedReader getReader(String file) throws FileNotFoundException, UnsupportedEncodingException {
+
+		FileInputStream rfis = new FileInputStream(file);
+		InputStreamReader risr = new InputStreamReader(rfis,"UTF-8");
+		BufferedReader rbr = new BufferedReader(risr);
+		return rbr;
+	}
+
+	public static OutputStream getWriter(File outFile) throws UnsupportedEncodingException, FileNotFoundException {
+		int bufferSize = 16384; // 16KB buffer size
+
+		OutputStream outputStream
+				= new BufferedOutputStream(new FileOutputStream(outFile), bufferSize);
+		return outputStream;
+//		FileOutputStream tfos = new FileOutputStream( outFile);
+//		OutputStreamWriter tfosw = new OutputStreamWriter(tfos,\"UTF-8\");
+//		return new BufferedWriter(tfosw);
+
+	}
 	public void toMongo(MongoCollection<Document> descCollection, MongoCollection<Document> ancesCollection) throws IOException {
 
 		for (String child : parentHier.keySet()) {

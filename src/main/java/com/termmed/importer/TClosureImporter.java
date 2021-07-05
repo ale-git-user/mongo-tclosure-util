@@ -36,7 +36,7 @@ public class TClosureImporter {
         tClos = new TClosure(file);
         System.out.println("sending data to collections");
         tClos.toMongo(descCollection, ancesCollection);
-
+//        tClos.dumpCollections();
         System.out.println("creating indexes in collections");
         descCollection.createIndex(Indexes.ascending("c"));
         ancesCollection.createIndex(Indexes.ascending("c"));

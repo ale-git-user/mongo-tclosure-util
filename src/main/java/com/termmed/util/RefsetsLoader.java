@@ -58,6 +58,26 @@ public class RefsetsLoader {
 
         }
     }
+
+    public void createDumpCollections(String outputFolder, String db, String collectionPrefix, String pathId) throws IOException {
+
+        MetadataGenerator metadataGenerator = new MetadataGenerator(outputFolder + "/" + collectionPrefix + "refsets" + pathId + ".metadata.json");
+        String metadata = Constants.REFSET_METADATA_JSON.replaceAll("===DB===", db);
+        metadata = metadata.replaceAll("===COLL===", collectionPrefix);
+        metadata = metadata.replaceAll("===PATH===", pathId);
+        metadataGenerator.generate(metadata);
+        metadataGenerator.close();
+        metadataGenerator = null;
+
+        BsonGenerator bsonGenerator = new BsonGenerator(outputFolder + "/" + collectionPrefix + "refsets" + pathId + ".bson");
+
+        for (String refsetId : refsets.keySet()) {
+            TreeSet<String> refsetList= refsets.get(refsetId);
+            Document doc= new Document("r", refsetId).append("s", refsetList);
+            bsonGenerator.generate(doc);
+        }
+        bsonGenerator.close();
+    }
     public void toMongo( MongoCollection<Document> collection) throws IOException {
         for (String refsetId : refsets.keySet()) {
             TreeSet<String> refsetList= refsets.get(refsetId);

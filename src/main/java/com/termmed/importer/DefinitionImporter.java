@@ -13,7 +13,7 @@ import java.io.IOException;
 
 public class DefinitionImporter {
 
-    public void importToMongo(String file,String server,String db, String collectionPrefix, String port,String pathId, String descFile,String concFile, String langCode) throws IOException {
+    public void importToMongo(String file, String concreteRelsFile, String server,String db, String collectionPrefix, String port,String pathId, String descFile,String concFile, String langCode) throws IOException {
 
         System.out.println("connecting to mongo");
         MongoClient mongoClient = MongoClients.create("mongodb://" + server + ":" + port);
@@ -32,7 +32,7 @@ public class DefinitionImporter {
             System.out.println("Error dropping previous collections:" + e.getMessage());
         }
         DefinitionLoader dLoader;
-        dLoader = new DefinitionLoader(file, descFile, concFile,langCode);
+        dLoader = new DefinitionLoader(file, concreteRelsFile, descFile, concFile,langCode);
         System.out.println("sending data to collections");
         dLoader.toMongo(definitionCollection);
 
