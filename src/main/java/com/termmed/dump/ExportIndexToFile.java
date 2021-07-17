@@ -1,13 +1,11 @@
 package com.termmed.dump;
 
-import com.termmed.util.DefinitionLoader;
-import com.termmed.util.RefsetsLoader;
-import com.termmed.util.TClosure;
-import com.termmed.util.TClosureAndDefinitionOwlLoader;
+import com.termmed.util.*;
 
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 
 public class ExportIndexToFile {
@@ -27,10 +25,33 @@ public class ExportIndexToFile {
         tClos.createDumpCollections(outputFolder, db, collectionPrefix, pathId);
         tClos=null;
     }
-    public void exportStatedTClosureAndDefinition(String owlFile, String db, String collectionPrefix,String pathId, String descFile, String concFile, String langCode) throws Exception {
+    public void exportStatedTClosureAndDefinition(String owlFile, String db, String collectionPrefix,String pathId, String descFile, String concFile, String langCode, LanguageFallbackProcessor languageFallbackProcessor) throws Exception {
         System.out.println("Stated data files index process");
         System.out.println("loading definition metadata data to files");
-        DefinitionLoader definitionLoader=new DefinitionLoader(descFile, concFile, langCode);
+
+        DefinitionLoader definitionLoader=new DefinitionLoader(descFile, concFile, langCode, languageFallbackProcessor);
+        TClosure tClos;
+        tClos = new TClosure();
+        System.out.println("Instancing definition and trans.closure loader object");
+        TClosureAndDefinitionOwlLoader tClosureAndDefinitionOwlLoader=new TClosureAndDefinitionOwlLoader(tClos, definitionLoader, owlFile);
+        tClosureAndDefinitionOwlLoader.load();
+
+        System.out.println("sending transitive closure data to files");
+        tClos.createDumpCollections(outputFolder, db, collectionPrefix + "st", pathId);
+        tClos=null;
+
+        System.out.println("sending definition data to files");
+        definitionLoader.createDumpCollections(outputFolder, db, collectionPrefix + "st", pathId);
+        System.out.println("end sending data to files");
+        definitionLoader=null;
+        System.out.println("End stated data files index process");
+    }
+
+    public void exportStatedTClosureAndDefinition(String owlFile, String db, String collectionPrefix,String pathId, HashMap<String, DescriptionData> descriptions, HashMap<String, ConceptData> concepts,  String langCode, LanguageFallbackProcessor languageFallbackProcessor) throws Exception {
+        System.out.println("Stated data files index process");
+        System.out.println("loading definition metadata data to files");
+
+        DefinitionLoader definitionLoader=new DefinitionLoader(descriptions, concepts, langCode, languageFallbackProcessor);
         TClosure tClos;
         tClos = new TClosure();
         System.out.println("Instancing definition and trans.closure loader object");
@@ -133,14 +154,25 @@ public class ExportIndexToFile {
         }
         return true;
     }
-    public void exportDefinition(String relsFile, String concreteRelsFile,String db, String collectionPrefix,String pathId, String descFile,String concFile, String langCode) throws IOException {
+    public void exportDefinition(String relsFile, String concreteRelsFile, String db, String collectionPrefix, String pathId, String descFile, String concFile, String langCode, LanguageFallbackProcessor languageFallbackProcessor) throws IOException {
 
         DefinitionLoader dLoader;
-        dLoader = new DefinitionLoader(relsFile, concreteRelsFile, descFile, concFile,langCode);
+        dLoader = new DefinitionLoader(relsFile, concreteRelsFile, descFile, concFile,langCode, languageFallbackProcessor);
         System.out.println("sending data to files");
         dLoader.createDumpCollections(outputFolder, db, collectionPrefix, pathId);
         System.out.println("end sending data to files");
         dLoader=null;
 
     }
+    public void exportDefinition(String relsFile, String concreteRelsFile, String db, String collectionPrefix, String pathId, HashMap<String, DescriptionData> descriptions, HashMap<String, ConceptData> concepts, String langCode, LanguageFallbackProcessor languageFallbackProcessor) throws IOException {
+
+        DefinitionLoader dLoader;
+        dLoader = new DefinitionLoader(relsFile, concreteRelsFile, descriptions, concepts,langCode, languageFallbackProcessor);
+        System.out.println("sending data to files");
+        dLoader.createDumpCollections(outputFolder, db, collectionPrefix, pathId);
+        System.out.println("end sending data to files");
+        dLoader=null;
+
+    }
+
 }

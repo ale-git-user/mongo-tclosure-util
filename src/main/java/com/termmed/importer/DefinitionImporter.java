@@ -32,7 +32,7 @@ public class DefinitionImporter {
             System.out.println("Error dropping previous collections:" + e.getMessage());
         }
         DefinitionLoader dLoader;
-        dLoader = new DefinitionLoader(file, concreteRelsFile, descFile, concFile,langCode);
+        dLoader = new DefinitionLoader(file, concreteRelsFile, descFile, concFile,langCode, null);
         System.out.println("sending data to collections");
         dLoader.toMongo(definitionCollection);
 
