@@ -58,7 +58,7 @@ public class Runner {
             }
 
         }else if (args[0].contains("-STATED_INFERRED_INDEX")){
-
+            System.out.println("*********************** step 1 ********************");
             if (args.length != 10) {
                 throw new Exception("Wrong params number");
             }
@@ -81,6 +81,8 @@ public class Runner {
             descriptions=null;
             if (conceptFile!=null && descFile!=null) {
                 loadConceptsAndDescriptions(conceptFile, descFile, args[7]);
+
+                System.out.println("**** Total Concepts :" + concepts.size() + " **** Total descriptions:" +  descriptions.size());
                 LanguageFallbackProcessor languageFallbackProcessor = null;
                 if (args[0].contains("WITH_PREF")) {
                     languageFallbackProcessor = getLanguageFallbackProcessor(args[9], folder, descFile);
@@ -356,7 +358,7 @@ public class Runner {
                 }
             }
         }
-        System.out.println("**** INDEX FALLBACK PROCESSOR **** Concepts without term:" + count);
+        System.out.println("**** INDEX FALLBACK PROCESSOR **** Concepts without term:" + count + " **** Total descriptions:" +  descriptions.size());
     }
 
 

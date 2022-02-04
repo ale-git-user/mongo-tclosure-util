@@ -35,9 +35,8 @@ public class TClosureAndDefinitionOwlLoader {
 
     }
     public void load() throws Exception {
-
-
-        int axiomCount = 0;
+        int countIsas=0;
+        int countDefs=0;
         BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(owlFile), "UTF8"));
         try {
             String line = br.readLine();
@@ -112,18 +111,28 @@ public class TClosureAndDefinitionOwlLoader {
                                     invertedTarget = String.valueOf(axiomRepresentation.getLeftHandSideNamedConcept());
                                     if (Concepts.IS_A_LONG.equals(axiomRelationship.getTypeId())) {
                                         tClos.addRel(invertedTarget, sourceId);
-                                    } else {
-                                        definitionLoader.addRel(invertedTarget, sourceId, String.valueOf(axiomRelationship.getTypeId()), group);
+                                        countIsas++;
+                                    }else{
+                                        countDefs++;
                                     }
-                                } else {
+
                                     if (concreteValue != null) {
                                         definitionLoader.addRel(concreteValue.asString(), sourceId, String.valueOf(axiomRelationship.getTypeId()), group);
                                     } else {
-                                        if (Concepts.IS_A_LONG.equals(axiomRelationship.getTypeId())) {
-                                            tClos.addRel(String.valueOf(axiomRelationship.getDestinationId()), sourceId);
-                                        } else {
-                                            definitionLoader.addRel(String.valueOf(axiomRelationship.getDestinationId()), sourceId, String.valueOf(axiomRelationship.getTypeId()), group);
-                                        }
+                                        definitionLoader.addRel(invertedTarget, sourceId, String.valueOf(axiomRelationship.getTypeId()), group);
+                                    }
+
+                                } else {
+                                    if (Concepts.IS_A_LONG.equals(axiomRelationship.getTypeId())) {
+                                        tClos.addRel(String.valueOf(axiomRelationship.getDestinationId()), sourceId);
+                                        countIsas++;
+                                    }else{
+                                        countDefs++;
+                                    }
+                                    if (concreteValue != null) {
+                                        definitionLoader.addRel(concreteValue.asString(), sourceId, String.valueOf(axiomRelationship.getTypeId()), group);
+                                    } else {
+                                        definitionLoader.addRel(String.valueOf(axiomRelationship.getDestinationId()), sourceId, String.valueOf(axiomRelationship.getTypeId()), group);
                                     }
                                 }
                             }
@@ -140,7 +149,7 @@ public class TClosureAndDefinitionOwlLoader {
                 }
             }
 
-            System.out.println(axiomCount + " owl relationships loaded from file " + owlFile.getName());
+            System.out.println(countIsas + " Isas and " + countDefs + " Defining rels from owl relationships loaded from file " + owlFile.getName());
         } finally {
             br.close();
         }

@@ -11,14 +11,12 @@ public class DefinitionLoader {
 
 	private final LanguageFallbackProcessor languageFallbackProcessor;
 	HashMap<String,TreeMap<Integer, TreeMap<String,String>>> definitions;
-	String rf2Rels;
 	private HashMap<String, ConceptData> concepts;
 	private HashMap<String, DescriptionData> descriptions;
 	private HashMap<String, HashMap<String,Integer>> typeCounter;
 
 	public DefinitionLoader(String rf2Rels, String concreteRelsFile, String descFile, String concFile, String langCode, LanguageFallbackProcessor languageFallbackProcessor) throws IOException{
 		definitions = new HashMap<String, TreeMap<Integer, TreeMap<String, String>>>();
-		this.rf2Rels=rf2Rels;
 		concepts=new HashMap<String, ConceptData>();
 		descriptions=new HashMap<String, DescriptionData>();
 		typeCounter=new HashMap<String, HashMap<String, Integer>>();
@@ -40,9 +38,8 @@ public class DefinitionLoader {
 		getDescriptionData(descFile, langCode);
 	}
 
-	public DefinitionLoader(String relsFile, String concreteRelsFile, HashMap<String, DescriptionData> descriptions, HashMap<String, ConceptData> concepts, String langCode, LanguageFallbackProcessor languageFallbackProcessor) throws IOException {
+	public DefinitionLoader(String rf2Rels, String concreteRelsFile, HashMap<String, DescriptionData> descriptions, HashMap<String, ConceptData> concepts, String langCode, LanguageFallbackProcessor languageFallbackProcessor) throws IOException {
 		definitions = new HashMap<String, TreeMap<Integer, TreeMap<String, String>>>();
-		this.rf2Rels=rf2Rels;
 		this.concepts=concepts;
 		this.descriptions=descriptions;
 		typeCounter=new HashMap<String, HashMap<String, Integer>>();
