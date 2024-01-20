@@ -35,7 +35,7 @@ public class RefsetsLoader {
                     if (line.trim().equals("")) {
                         continue;
                     }
-                    String[] columns = line.split("\\t",-1);
+                    String[] columns = line.split("\t",-1);
                     if (columns[2].equals("1") && !notEnabledToIndex.contains(columns[4])){
                         TreeSet<String>tmap=refsets.get(columns[4]);
                         if (tmap==null){
