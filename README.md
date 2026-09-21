@@ -38,7 +38,7 @@ Artefacto ejecutable: `target/TClosure_Definition_Refset_Indexer.jar`
 
 | Elemento | Versión |
 |---|---|
-| JDK | **17**. Ver [Compatibilidad con versiones de Java](#compatibilidad-con-versiones-de-java): por debajo de 17 los modos que procesan OWL no arrancan, y en 17 necesitan un flag adicional (`--add-opens`). |
+| JDK | **17**. Por debajo de 17 los modos que procesan OWL no arrancan; ver [Compatibilidad con versiones de Java](#compatibilidad-con-versiones-de-java). |
 | Maven | 3.x |
 | MongoDB | Sólo para los modos `*2MONGO` y para restaurar los dumps (driver `mongodb-driver-sync` 4.0.3) |
 
@@ -59,7 +59,7 @@ de prueba:
 |---|---|---|---|
 | 8 | **no** — el build exige `release 17` | — | — |
 | 11 | **no** — el build exige `release 17` | sí (con un jar ya construido) | **no** — `UnsupportedClassVersionError` |
-| 17 | sí | sí | **sólo con `--add-opens`** |
+| 17 | sí | sí | sí — el jar trae `Add-Opens` en el manifiesto |
 
 ### El piso real es Java 17
 
@@ -85,12 +85,12 @@ Histórico del piso de ejecución, por si hay que volver atrás:
 | 3.0.10 | 55.0 | 11 |
 | 5.4.0 (actual) | 61.0 | **17** |
 
-### JDK 17: hace falta `--add-opens`
+### `Add-Opens` en el manifiesto: ya resuelto, no hace falta ningún flag
 
 En JDK 16+ la encapsulación fuerte del JDK ([JEP 403](https://openjdk.org/jeps/403)) bloquea el
 acceso reflexivo a internos de `java.base`. La cadena `snomed-owl-toolkit` → `owlapi-api` 4.1.3 →
 **Guice 4.0** (2015) usa un cglib antiguo que invoca `ClassLoader.defineClass` por reflexión, y
-falla al instanciar `AxiomRelationshipConversionService`:
+sin permiso explícito falla al instanciar `AxiomRelationshipConversionService`:
 
 ```
 java.lang.ExceptionInInitializerError
@@ -101,26 +101,41 @@ Caused by: java.lang.reflect.InaccessibleObjectException: Unable to make protect
   module java.base does not "opens java.lang" to unnamed module
 ```
 
-La solución, **sin cambios de código**, es abrir ese paquete al arrancar:
+El permiso viene declarado **dentro del propio jar**: el `maven-assembly-plugin` escribe
+`Add-Opens: java.base/java.lang` en el manifiesto, y el lanzador `java` lo aplica al arrancar con
+`-jar`. Por eso el uber-jar se ejecuta normalmente, sin opciones extra:
 
 ```bash
-java --add-opens java.base/java.lang=ALL-UNNAMED \
-     -jar target/TClosure_Definition_Refset_Indexer.jar <modo> <args...>
+java -jar target/TClosure_Definition_Refset_Indexer.jar <modo> <args...>
 ```
 
-Con ese flag el pipeline completo —incluida la conversión de axiomas OWL— termina correctamente
-en JDK 17. Los modos que no tocan OWL (`-INFERRED_INDEX`, `-REFSET_INDEX`, `*2MONGO`) funcionan
-en JDK 17 **sin** ningún flag, porque nunca llegan a instanciar el toolkit.
+Esto importa para los procesos automatizados: no hay que acordarse de modificar el script que
+lanza el indexador.
 
-Para no depender de quien lanza el proceso, el flag se puede fijar en el propio artefacto
-añadiendo `Add-Opens: java.base/java.lang` al manifiesto del `maven-assembly-plugin`, o
-exportando `JDK_JAVA_OPTIONS="--add-opens java.base/java.lang=ALL-UNNAMED"` (respetado por el
-lanzador `java` desde JDK 9).
+> **Sólo si ejecutás por classpath** (`java -cp ... com.termmed.runner.Runner`) en vez de con
+> `-jar`, el manifiesto no se aplica y hay que pasar la opción a mano:
+> `--add-opens java.base/java.lang=ALL-UNNAMED`.
 
-### Por qué actualizar el toolkit no elimina el flag
+Los modos que no tocan OWL (`-INFERRED_INDEX`, `-REFSET_INDEX`, `*2MONGO`) nunca instancian el
+toolkit, así que no dependen de nada de esto.
 
-Subir `snomed-owl-toolkit` de 3.0.10 a **5.4.0 no evita el `--add-opens`**, porque la rama 5.4.x
-sigue dependiendo exactamente de las mismas versiones que causan el problema:
+### Si ves `WARNING: An illegal reflective access operation has occurred`
+
+Ese aviso, con su línea `Use --illegal-access=warn`, **no puede venir de un JDK 17**: la opción
+`--illegal-access` fue eliminada en esa versión. Si aparece, el proceso está corriendo sobre un
+JDK 9–15 (típicamente 11), donde el mismo acceso de Guice se permitía con una advertencia en vez
+de fallar. Es la señal de que ese entorno todavía no se actualizó, y con el jar actual —que exige
+Java 17— va a cortar antes, en el paso de OWL, con `UnsupportedClassVersionError`.
+
+Aparte de eso, los mensajes `SLF4J: No SLF4J providers were found` son inofensivos: hay
+`slf4j-api` en el classpath sin ninguna implementación detrás, así que las librerías que loguean
+por SLF4J simplemente no escriben nada. No afecta al procesamiento.
+
+### Por qué actualizar el toolkit no elimina la causa de fondo
+
+El `Add-Opens` del manifiesto tapa el síntoma, pero la causa sigue ahí, y **actualizar el toolkit
+no la elimina**: subir `snomed-owl-toolkit` de 3.0.10 a 5.4.0 deja intactas las versiones que
+provocan el problema:
 
 ```
 org.snomed.otf:snomed-owl-toolkit:5.4.0
@@ -136,8 +151,10 @@ referenciando una API interna eliminada
 actualizar o excluir también `guice-multibindings` y `guice-assistedinject`, y revalidar owlapi
 entero.
 
-Conclusión práctica: mientras la cadena arrastre owlapi 4.1.3, **el flag es obligatorio en
-JDK 16+**, con cualquier versión del toolkit.
+Conclusión práctica: mientras la cadena arrastre owlapi 4.1.3, la apertura de `java.lang` es
+imprescindible en JDK 16+ con cualquier versión del toolkit. Por eso se declara en el manifiesto
+en lugar de dejarla a cargo de quien lanza el proceso. Salir de esta dependencia requiere un
+owlapi moderno (5.x), lo que ya no es un cambio de una línea en el `pom.xml`.
 
 > **Nota de seguridad, al margen de la versión de Java:** el árbol arrastra
 > `log4j-core` 2.13.0 (vía `sct2-utilities`), afectado por Log4Shell (CVE-2021-44228), y

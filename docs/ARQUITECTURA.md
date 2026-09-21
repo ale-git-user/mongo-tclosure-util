@@ -416,10 +416,11 @@ Detectado al documentar; nada de esto se invoca desde el flujo actual:
     import de `com.sun.org.apache.bcel.*` (interno del JDK, incompatible con JDK 9+).
 
 > **Efecto colateral de las subidas de `snomed-owl-toolkit`:** cada salto elevó el JRE mínimo
-> (3.0.4 → Java 8, 3.0.10 → Java 11, **5.4.0 → Java 17**), aunque el `pom.xml` siga declarando
-> `source`/`target` 8. Además, en **JDK 16+** los modos que procesan OWL requieren
-> `--add-opens java.base/java.lang=ALL-UNNAMED` por el Guice 4.0 que arrastra owlapi 4.1.3;
-> la rama 5.4.x **no** lo soluciona, porque depende de ese mismo owlapi.
+> (3.0.4 → Java 8, 3.0.10 → Java 11, **5.4.0 → Java 17**), lo que motivó pasar el
+> `maven-compiler-plugin` a `<release>17</release>`. Además, en **JDK 16+** los modos que procesan
+> OWL necesitan abrir `java.base/java.lang` por el Guice 4.0 que arrastra owlapi 4.1.3 (la rama
+> 5.4.x **no** lo soluciona: depende del mismo owlapi); el permiso se declara como
+> `Add-Opens` en el manifiesto del uber-jar, así que `java -jar` no requiere opciones extra.
 > El detalle, con los errores exactos y las alternativas, está en
 > [README § Compatibilidad con versiones de Java](../README.md#compatibilidad-con-versiones-de-java).
 
