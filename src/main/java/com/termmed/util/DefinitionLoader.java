@@ -9,6 +9,7 @@ import java.util.*;
 
 public class DefinitionLoader {
 
+	private static final String INFERRED_CHARACTERISTIC_TYPE = "900000000000011006";
 	private final LanguageFallbackProcessor languageFallbackProcessor;
 	HashMap<String,TreeMap<Integer, TreeMap<String,String>>> definitions;
 	private HashMap<String, ConceptData> concepts;
@@ -228,7 +229,7 @@ public class DefinitionLoader {
 					continue;
 				}
 				String[] columns = line.split("\\t",-1);
-				if ( columns[2].equals("1") ){
+				if ( columns[2].equals("1") && columns[8].equals(INFERRED_CHARACTERISTIC_TYPE)){
 					if (fileType.equals("inferred")) {
 						addRel(columns[5], columns[4], columns[7], Integer.parseInt(columns[6]));
 					}else{
@@ -256,8 +257,12 @@ public class DefinitionLoader {
 		}		
 	}
 	public void addRel(String dest, String source, String type, Integer groupNr){
-		if (dest.equals(source)){
-			System.out.println("same destination and source: " + source);
+		String cleanSource=source;
+		if (source.indexOf("#")>-1){
+			cleanSource=source.substring(0,source.indexOf("#"));
+		}
+		if (dest.equals(cleanSource)){
+			System.out.println("same destination and source: " + cleanSource);
 			return;
 		}
 		HashMap<String, Integer> types = typeCounter.get(source);
@@ -326,19 +331,23 @@ public class DefinitionLoader {
 				}
 				groupDocs.add(new Document("rg",relDocs));
 			}
-			ConceptData cData=concepts.get(source);
+			String cleanSource=source;
+			if (source.indexOf("#")>-1){
+				cleanSource=source.substring(0,source.indexOf("#"));
+			}
+			ConceptData cData=concepts.get(cleanSource);
 			module=null;
 			primitive=null;
 			if (cData!=null) {
 				module = cData.getModule();
 				primitive = cData.getPrimitive();
 			}
-			DescriptionData dData=descriptions.get(source);
+			DescriptionData dData=descriptions.get(cleanSource);
 			Document doc;
 			if (dData!=null) {
-				doc = new Document("c", source).append("g", groupDocs).append("m", module).append("p", primitive).append("st", dData.getSemTag()).append("dt", dData.getDefaultTerm());
+				doc = new Document("c", cleanSource).append("g", groupDocs).append("m", module).append("p", primitive).append("st", dData.getSemTag()).append("dt", dData.getDefaultTerm());
 			}else{
-				doc = new Document("c", source).append("g", groupDocs).append("m", module).append("p", primitive);
+				doc = new Document("c", cleanSource).append("g", groupDocs).append("m", module).append("p", primitive);
 			}
 			bsonGenerator.generate(doc);
 		}

@@ -1,8 +1,6 @@
 package com.termmed.util;
 
 import com.google.common.collect.Sets;
-import com.sun.org.apache.bcel.internal.classfile.ConstantValue;
-import org.semanticweb.owlapi.model.AxiomType;
 import org.semanticweb.owlapi.model.OWLAxiom;
 import org.snomed.otf.owltoolkit.constants.Concepts;
 import org.snomed.otf.owltoolkit.conversion.AxiomRelationshipConversionService;
@@ -14,10 +12,8 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 public class TClosureAndDefinitionOwlLoader {
     private final AxiomRelationshipConversionService axiomRelationshipConversionService;
@@ -54,11 +50,9 @@ public class TClosureAndDefinitionOwlLoader {
                     continue;
                 }
                 String sourceId = columns[5];
-
                 OWLAxiom owlAxiom = null;
                 try {
                     owlAxiom = axiomRelationshipConversionService.convertOwlExpressionToOWLAxiom(columns[6]);
-
                     AxiomRepresentation axiomRepresentation = axiomRelationshipConversionService.convertAxiomToRelationships(owlAxiom);
                     if (axiomRepresentation == null) {
                         line = br.readLine();
@@ -117,9 +111,9 @@ public class TClosureAndDefinitionOwlLoader {
                                     }
 
                                     if (concreteValue != null) {
-                                        definitionLoader.addRel(concreteValue.asString(), sourceId, String.valueOf(axiomRelationship.getTypeId()), group);
+                                        definitionLoader.addRel(concreteValue.asString(), sourceId + "#" + columns[0], String.valueOf(axiomRelationship.getTypeId()), group);
                                     } else {
-                                        definitionLoader.addRel(invertedTarget, sourceId, String.valueOf(axiomRelationship.getTypeId()), group);
+                                        definitionLoader.addRel(invertedTarget, sourceId + "#" + columns[0], String.valueOf(axiomRelationship.getTypeId()), group);
                                     }
 
                                 } else {
@@ -130,9 +124,9 @@ public class TClosureAndDefinitionOwlLoader {
                                         countDefs++;
                                     }
                                     if (concreteValue != null) {
-                                        definitionLoader.addRel(concreteValue.asString(), sourceId, String.valueOf(axiomRelationship.getTypeId()), group);
+                                        definitionLoader.addRel(concreteValue.asString(), sourceId + "#" + columns[0], String.valueOf(axiomRelationship.getTypeId()), group);
                                     } else {
-                                        definitionLoader.addRel(String.valueOf(axiomRelationship.getDestinationId()), sourceId, String.valueOf(axiomRelationship.getTypeId()), group);
+                                        definitionLoader.addRel(String.valueOf(axiomRelationship.getDestinationId()), sourceId + "#" + columns[0], String.valueOf(axiomRelationship.getTypeId()), group);
                                     }
                                 }
                             }
