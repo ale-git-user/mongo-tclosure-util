@@ -1,0 +1,16 @@
+# Build de Maven
+target/
+*.class
+*.lst
+
+# Logs: log4j escribe logs/ en el directorio de trabajo al ejecutar el jar
+logs/
+
+# Configuración de IntelliJ IDEA
+.idea/
+*.iml
+out/
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
